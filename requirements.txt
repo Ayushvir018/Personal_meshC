@@ -1,0 +1,10 @@
+streamlit
+chromadb
+sentence-transformers
+openai
+scipy
+sounddevice
+faster-whisper
+python-dotenv
+plotly
+streamlit-lottie
