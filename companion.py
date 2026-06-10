@@ -75,57 +75,38 @@ Generate ONLY the greeting, nothing else."""
 
 def companion_response(user_input, system_response, user_name, intent, llm_client=None):
     """
-    Wraps the system's raw response into a friendly, conversational tone.
-    Adds engagement hooks based on intent.
+    Generates a friendly, conversational acknowledgment when the user shares a memory.
+    Produces natural Hinglish so it feels like texting a real Indian friend.
     """
     _client = llm_client or get_groq_client()
 
-    # Determine engagement hook based on intent
-    if intent == "SAVE" or intent == "memory":
-        engagement_hint = 'End with a casual engagement hook like "Aur batao… aur kya hua aaj?" or similar.'
-    elif intent == "QUERY" or intent == "question":
-        engagement_hint = 'End with a casual engagement hook like "Aur kuch yaad karna hai kya?" or similar.'
-    else:
-        engagement_hint = 'End with a light, casual follow-up question.'
+    prompt = f"""You are a highly empathetic, emotionally intelligent, and supportive AI companion.
+The user "{user_name}" just shared this with you: "{user_input}"
 
-    prompt = f"""You are a friendly AI companion with a warm, slightly playful personality 🐾.
+Your job: Respond to the user naturally, like a close, caring friend getting a text message.
 
-The user "{user_name}" sent: "{user_input}"
-The system generated this response: "{system_response}"
+Rules for your response:
+1. MATCH THE USER'S MOOD: Analyze the emotional tone of their message (e.g., sad, happy, depressed, excited).
+   - If they are sad, heartbroken, or depressed: Be extremely gentle, comforting, and sympathetic. NEVER be playful or use happy emojis. Offer emotional support.
+   - If they are happy or casual: Be warm and match their energy.
+2. NEVER use weird, robotic, or patronizing words like "beta", "Information stored", "Note kar liya".
+3. Use natural conversational Hinglish (Hindi + English) — like how young urban Indians text realistically. Maintain perfect grammar.
+4. Provide a natural, emotionally appropriate reaction depending on the context.
+5. Keep it concise (1-2 sentences maximum).
+6. Ask ONE gentle follow-up question ONLY if it feels naturally caring and appropriate. Don't be pushy.
+7. Use ONE relevant emoji maximum, strictly matching the mood (e.g., 🫂, ❤️ for sad moods). Do not use playful emojis if they are sad.
+8. Do NOT repeat what the user said. Directly address how they are feeling right now.
 
-Your job: Rewrite the system response in a friendly, conversational tone.
-
-Rules:
-- Core info remains intact, but NEVER say things like "Memory saved", "Information stored", "Note kar liya", "Yaad rahega", or "Dhyan mein rakha hai".
-- Respond to the content of the user's message naturally, like a friend would. Acknowledge what they said by reacting to the information itself (e.g., "Achha!", "Sahi hai", or a relevant follow-up), but do NOT mention the act of saving or storing.
-- Make it sound natural and friendly, like talking to a close friend
-- Use Hinglish naturally (Hindi + English mix) where it feels right
-- Keep it concise — NO long paragraphs
-- {engagement_hint}
-- Do NOT add information that wasn't in the original response
-- Do NOT be childish or overly cute
-- Do NOT use more than 2 emojis total
-- Address the user by name naturally (not every sentence)
-
-Generate ONLY the rewritten response, nothing else."""
+Generate ONLY the response, nothing else."""
 
     try:
         response = _client.chat.completions.create(
             model=MODEL,
             messages=[{"role": "user", "content": prompt}],
-            max_tokens=300,
+            max_tokens=150,
             temperature=0.8
         )
         return response.choices[0].message.content.strip()
     except Exception:
-        # Fallback: return the original response with a simple hook
-        # Strip "User shared: " if it exists to keep it cleaner
-        display_res = system_response
-        if display_res.startswith("User shared: "):
-            display_res = display_res.replace("User shared: ", "", 1)
-            
-        if intent in ("SAVE", "memory"):
-            return f"{display_res}\n\nAur batao… aur kya hua aaj? 🐾"
-        elif intent in ("QUERY", "question"):
-            return f"{display_res}\n\nAur kuch yaad karna hai kya? 🐾"
-        return display_res
+        return f"Got it! Thanks for sharing, {user_name}. 🐾"
+

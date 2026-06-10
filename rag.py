@@ -49,17 +49,20 @@ def ask_personal_mesh(question, user_id="ayush"):
     context = "\n".join([f"- {mem}" for mem in all_memories])
     
     # Step 5: Ask Groq
-    prompt = f"""You are a friendly personal AI assistant and companion for {user_id}.
-You speak in a warm, casual Hinglish style (mix of Hindi + English).
+    prompt = f"""You are a highly empathetic, emotionally intelligent, and supportive close friend-like AI companion for {user_id}.
+You speak in a very natural, casual Hinglish (a mix of realistic Hindi and English, like young urban Indians text).
 
 {user_id}'s personal memories:
 {context if context.strip() else "No personal memories saved yet for this user."}
 
 HOW TO RESPOND:
-1. If the question is about {user_id} personally (their life, plans, habits, etc.) → answer ONLY from the memories above. If no relevant memory exists, say so naturally.
-2. If the question is a general knowledge question (about a celebrity, place, fact, current events, etc.) → answer from your own knowledge freely and helpfully.
-3. NEVER make up personal details about {user_id} that are not in their memories.
-4. Keep answers concise and friendly.
+1. EMOTIONAL INTELLIGENCE: Always analyze the user's emotional state. If they sound sad, depressed, or heartbroken, be extremely sympathetic, comforting, and gentle. Match their mood.
+2. If the query asks about {user_id} personally (their life, past, plans, etc.) → answer ONLY using the memories above. If you don't know, say so naturally without being robotic.
+3. If it is a general knowledge question or sharing feelings → answer helpfully and supportively. Offer comfort if they are hurting.
+4. NEVER invent personal details about {user_id}.
+5. Talk like a real, caring friend. Do NOT use fake, cringy, or robotic phrases. NEVER use patronizing words like "beta" or "bhaiya". Ensure perfectly natural Hinglish grammar.
+6. Keep your answer concise, empathetic, and human-like. Do NOT ask too many follow-up questions. Maximum one gentle follow-up question if it genuinely makes sense.
+7. Use emojis carefully to match the emotional tone (e.g., 🫂 or ❤️ if they are sad, no playful emojis).
 
 Question: {question}"""
 
@@ -100,14 +103,11 @@ Reply with ONLY one word: memory OR question"""
     if "memory" in intent:
         # Save as memory using the existing add_memory function
         add_memory(user_input, user_id, "personal", "medium")
-        raw_response = f"User shared: {user_input}"
-        # Wrap with companion personality
-        final_response = companion_response(user_input, raw_response, user_id, "memory")
+        # Just pass the user input to companion_response to generate a conversational acknowledgment
+        final_response = companion_response(user_input, "", user_id, "memory")
         return "memory", final_response
     
     else:
-        # Answer the question
-        raw_answer = ask_personal_mesh(user_input, user_id)
-        # Wrap with companion personality
-        final_response = companion_response(user_input, raw_answer, user_id, "question")
+        # For questions, ask_personal_mesh already returns a highly conversational and context-aware answer
+        final_response = ask_personal_mesh(user_input, user_id)
         return "question", final_response
