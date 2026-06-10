@@ -208,3 +208,42 @@ def get_all_tags(user_id):
             all_tags.extend(tags)
     
     return list(set(all_tags))  # unique tags only
+
+
+def get_latest_daily_summary(user_id):
+    """Retrieve the latest daily summary for a user."""
+    conn = sqlite3.connect("memories.db")
+    cursor = conn.cursor()
+    cursor.execute(
+        "SELECT summary FROM summaries WHERE user_id = ? AND period = 'daily' ORDER BY created_at DESC LIMIT 1",
+        (user_id,)
+    )
+    row = cursor.fetchone()
+    conn.close()
+    return row[0] if row else None
+
+
+def get_latest_weekly_summary(user_id):
+    """Retrieve the latest weekly summary for a user."""
+    conn = sqlite3.connect("memories.db")
+    cursor = conn.cursor()
+    cursor.execute(
+        "SELECT summary FROM summaries WHERE user_id = ? AND period = 'weekly' ORDER BY created_at DESC LIMIT 1",
+        (user_id,)
+    )
+    row = cursor.fetchone()
+    conn.close()
+    return row[0] if row else None
+
+
+def get_latest_monthly_summary(user_id):
+    """Retrieve the latest monthly summary for a user."""
+    conn = sqlite3.connect("memories.db")
+    cursor = conn.cursor()
+    cursor.execute(
+        "SELECT summary FROM summaries WHERE user_id = ? AND period = 'monthly' ORDER BY created_at DESC LIMIT 1",
+        (user_id,)
+    )
+    row = cursor.fetchone()
+    conn.close()
+    return row[0] if row else None

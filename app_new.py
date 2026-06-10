@@ -60,6 +60,22 @@ if not os.path.exists("memories.db"):
     conn.commit()
     conn.close()
 
+# Ensure summaries table exists
+conn = sqlite3.connect("memories.db")
+cursor = conn.cursor()
+cursor.execute("""
+CREATE TABLE IF NOT EXISTS summaries (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id TEXT,
+    period TEXT,
+    summary TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+)
+""")
+conn.commit()
+conn.close()
+
+
 st.set_page_config(
     page_title="Personal Mesh",
     page_icon="🧠",
@@ -727,7 +743,7 @@ if "Chat" in st.session_state.page:
 # ── MEMORY PAGE ───────────────────────────────────────────────────────────────
 elif "Memory" in st.session_state.page:
 
-    tab1, tab2, tab3 = st.tabs(["＋  Add", "  Browse", "  Stats"])
+    tab1, tab2, tab3, tab4 = st.tabs(["＋  Add", "  Browse", "  Stats", "📊  Summaries"])
 
     # ── ADD TAB
     with tab1:
@@ -884,3 +900,68 @@ elif "Memory" in st.session_state.page:
                         st.plotly_chart(fig2, use_container_width=True)
         except Exception as e:
             st.error(f"Stats error: {e}")
+
+    # ── SUMMARIES TAB
+    with tab4:
+        st.markdown('<div style="height:1rem"></div>', unsafe_allow_html=True)
+        st.markdown('<div class="page-title" style="font-size:1.3rem">📊 Memory Summaries</div>', unsafe_allow_html=True)
+        st.markdown('<div style="height:1.2rem"></div>', unsafe_allow_html=True)
+
+        from summarizer import (
+            generate_daily_summary,
+            generate_weekly_summary,
+            generate_monthly_summary
+        )
+        from memory_operations import (
+            get_latest_daily_summary,
+            get_latest_weekly_summary,
+            get_latest_monthly_summary
+        )
+
+        daily_summary = get_latest_daily_summary(st.session_state.current_user)
+        weekly_summary = get_latest_weekly_summary(st.session_state.current_user)
+        monthly_summary = get_latest_monthly_summary(st.session_state.current_user)
+
+        col1, col2, col3 = st.columns(3, gap="medium")
+
+        with col1:
+            st.markdown("### 📅 Daily Summary")
+            if st.button("Generate Daily Summary", key="btn_daily_sum", use_container_width=True):
+                with st.spinner("Analyzing and summarizing last 24h..."):
+                    res = generate_daily_summary(st.session_state.current_user)
+                    st.success("Daily summary generated!")
+                    st.rerun()
+
+            st.markdown('<div style="height:0.5rem"></div>', unsafe_allow_html=True)
+            if daily_summary:
+                st.markdown(f'<div class="memory-card"><div class="content">{daily_summary}</div></div>', unsafe_allow_html=True)
+            else:
+                st.info("No daily summary generated yet. Click generate above.")
+
+        with col2:
+            st.markdown("### 🗓️ Weekly Summary")
+            if st.button("Generate Weekly Summary", key="btn_weekly_sum", use_container_width=True):
+                with st.spinner("Analyzing and summarizing last 7 days..."):
+                    res = generate_weekly_summary(st.session_state.current_user)
+                    st.success("Weekly summary generated!")
+                    st.rerun()
+
+            st.markdown('<div style="height:0.5rem"></div>', unsafe_allow_html=True)
+            if weekly_summary:
+                st.markdown(f'<div class="memory-card"><div class="content">{weekly_summary}</div></div>', unsafe_allow_html=True)
+            else:
+                st.info("No weekly summary generated yet. Click generate above.")
+
+        with col3:
+            st.markdown("### 🗓️ Monthly Summary")
+            if st.button("Generate Monthly Summary", key="btn_monthly_sum", use_container_width=True):
+                with st.spinner("Analyzing and summarizing last 30 days..."):
+                    res = generate_monthly_summary(st.session_state.current_user)
+                    st.success("Monthly summary generated!")
+                    st.rerun()
+
+            st.markdown('<div style="height:0.5rem"></div>', unsafe_allow_html=True)
+            if monthly_summary:
+                st.markdown(f'<div class="memory-card"><div class="content">{monthly_summary}</div></div>', unsafe_allow_html=True)
+            else:
+                st.info("No monthly summary generated yet. Click generate above.")

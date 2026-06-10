@@ -26,29 +26,80 @@ def get_groq_client():
 
 def ask_personal_mesh(question, user_id="ayush"):
     client = get_groq_client()
-    # Step 1: Semantic search
-    results = search_similar(question, n_results=5, user_id=user_id)
-    memories = results['documents'][0]
     
-    # Step 2: Fetch user-specific memories from SQLite
-    conn = sqlite3.connect("memories.db")
-    cursor = conn.cursor()
-    cursor.execute(
-        "SELECT content FROM memories WHERE user_id = ?",
-        (user_id,)
-    )
-    user_rows = cursor.fetchall()
-    conn.close()
+    # Step 1: Detect if the question is asking for a summary/recap of activities
+    classify_prompt = f"""Analyze if the following question is asking for a summary, recap, or log of the user's activities, projects, achievements, or events for a specific period (such as today, this week, this month, recently).
     
-    user_memories = [row[0] for row in user_rows]
+    Question: "{question}"
     
-    # Step 3: Combine both
-    all_memories = list(set(memories + user_memories))
+    Reply with one of these classification labels:
+    - 'daily' (if asking about today/daily activity)
+    - 'weekly' (if asking about this week/weekly activity)
+    - 'monthly' (if asking about this month/monthly activity)
+    - 'recent' (if asking about recent work or general recap/summary)
+    - 'no' (if it is a specific query that doesn't ask for a general recap/summary)
     
-    # Step 4: Build context
-    context = "\n".join([f"- {mem}" for mem in all_memories])
+    Reply with ONLY the classification label."""
     
-    # Step 5: Ask Groq
+    intent = "no"
+    try:
+        classify_response = client.chat.completions.create(
+            model="llama-3.1-8b-instant",
+            messages=[{"role": "user", "content": classify_prompt}],
+            max_tokens=5,
+            temperature=0
+        )
+        intent = classify_response.choices[0].message.content.strip().lower()
+    except Exception:
+        pass
+        
+    summary_context = ""
+    if any(p in intent for p in ('daily', 'weekly', 'monthly', 'recent')):
+        from memory_operations import get_latest_daily_summary, get_latest_weekly_summary, get_latest_monthly_summary
+        summaries = []
+        if 'daily' in intent or 'recent' in intent:
+            daily = get_latest_daily_summary(user_id)
+            if daily and not daily.startswith("No memories found"):
+                summaries.append(f"Latest Daily Summary:\n{daily}")
+        if 'weekly' in intent or 'recent' in intent:
+            weekly = get_latest_weekly_summary(user_id)
+            if weekly and not weekly.startswith("No memories found"):
+                summaries.append(f"Latest Weekly Summary:\n{weekly}")
+        if 'monthly' in intent or 'recent' in intent:
+            monthly = get_latest_monthly_summary(user_id)
+            if monthly and not monthly.startswith("No memories found"):
+                summaries.append(f"Latest Monthly Summary:\n{monthly}")
+                
+        if summaries:
+            summary_context = "\n\n".join(summaries)
+            
+    # Step 2: Build context based on summaries or raw memories
+    if summary_context:
+        context = f"Here are the pre-generated summaries of {user_id}'s activities:\n{summary_context}"
+    else:
+        # Semantic search
+        results = search_similar(question, n_results=5, user_id=user_id)
+        memories = results['documents'][0]
+        
+        # Fetch user-specific memories from SQLite
+        conn = sqlite3.connect("memories.db")
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT content FROM memories WHERE user_id = ?",
+            (user_id,)
+        )
+        user_rows = cursor.fetchall()
+        conn.close()
+        
+        user_memories = [row[0] for row in user_rows]
+        
+        # Combine both
+        all_memories = list(set(memories + user_memories))
+        
+        # Build context
+        context = "\n".join([f"- {mem}" for mem in all_memories])
+    
+    # Step 3: Ask Groq
     prompt = f"""You are a highly empathetic, emotionally intelligent, and supportive close friend-like AI companion for {user_id}.
 You speak in a very natural, casual Hinglish (a mix of realistic Hindi and English, like young urban Indians text).
 
