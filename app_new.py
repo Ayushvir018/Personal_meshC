@@ -75,6 +75,22 @@ CREATE TABLE IF NOT EXISTS summaries (
 conn.commit()
 conn.close()
 
+# Ensure user_profiles table exists
+conn = sqlite3.connect("memories.db")
+cursor = conn.cursor()
+cursor.execute("""
+CREATE TABLE IF NOT EXISTS user_profiles (
+    user_id TEXT PRIMARY KEY,
+    profile_json TEXT,
+    memory_count INTEGER DEFAULT 0,
+    last_rebuild_at TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+)
+""")
+conn.commit()
+conn.close()
+
+
 
 st.set_page_config(
     page_title="Personal Mesh",
@@ -513,8 +529,8 @@ with st.sidebar:
 
     page = st.radio(
         "",
-        ["💬  Chat", "🧠  Memory"],
-        index=0 if st.session_state.page == "💬  Chat" else 1,
+        ["💬  Chat", "🧠  Memory", "👤  AI Profile"],
+        index=0 if st.session_state.page == "💬  Chat" else (1 if st.session_state.page == "🧠  Memory" else 2),
         label_visibility="collapsed",
         key="nav_radio"
     )
@@ -965,3 +981,109 @@ elif "Memory" in st.session_state.page:
                 st.markdown(f'<div class="memory-card"><div class="content">{monthly_summary}</div></div>', unsafe_allow_html=True)
             else:
                 st.info("No monthly summary generated yet. Click generate above.")
+
+
+# ── PROFILE PAGE ──────────────────────────────────────────────────────────────
+elif "Profile" in st.session_state.page:
+    st.markdown('<div class="page-title">👤 AI User Profile</div>', unsafe_allow_html=True)
+    st.markdown('<div class="page-subtitle">Your persistent structured long-term memory profile</div>', unsafe_allow_html=True)
+    st.markdown('<div style="height:1.5rem"></div>', unsafe_allow_html=True)
+    
+    from profile_builder import get_profile, build_profile
+    import json
+    
+    # 1. Fetch profile
+    profile = get_profile(st.session_state.current_user)
+    
+    # Action buttons at the top
+    col_action1, col_action2 = st.columns([1, 4])
+    with col_action1:
+        if st.button("🔄 Refresh Profile", key="btn_refresh_profile", use_container_width=True):
+            with st.spinner("Analyzing memory history and summaries..."):
+                try:
+                    profile = build_profile(st.session_state.current_user)
+                    st.success("User Profile updated successfully!")
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"Error rebuilding profile: {e}")
+                    
+    with col_action2:
+        if profile:
+            profile_data_str = json.dumps(profile, indent=4)
+            st.download_button(
+                label="📄 Export Profile JSON",
+                data=profile_data_str,
+                file_name=f"{st.session_state.current_user}_profile.json",
+                mime="application/json",
+                use_container_width=False
+            )
+            
+    st.markdown("---")
+    
+    if profile:
+        # We display the name in a prominent way
+        name = profile.get("name", st.session_state.current_user)
+        st.markdown(f"### Welcome, **{name}**")
+        
+        # Display the profile fields formatted beautifully using columns or cards
+        col1, col2 = st.columns(2, gap="large")
+        
+        def render_tags_with_confidence(items):
+            if not items:
+                return "<div style='color:var(--muted); font-size:0.85rem;'>None detected yet</div>"
+            html = ""
+            for item in items:
+                name_str = ""
+                confidence = 1.0
+                if isinstance(item, dict):
+                    name_str = item.get("name", "")
+                    confidence = item.get("confidence", 1.0)
+                elif isinstance(item, str):
+                    name_str = item
+                
+                if name_str.strip():
+                    conf_pct = int(confidence * 100)
+                    html += f'<span class="tag">#{name_str.strip()} <small style="opacity:0.6">({conf_pct}%)</small></span>'
+            return html if html else "<div style='color:var(--muted); font-size:0.85rem;'>None detected yet</div>"
+
+        with col1:
+            st.markdown("#### 📁 Main Projects")
+            projects_html = render_tags_with_confidence(profile.get("main_projects"))
+            st.markdown(f'<div class="memory-card"><div class="content">{projects_html}</div></div>', unsafe_allow_html=True)
+            st.markdown('<div style="height:1rem"></div>', unsafe_allow_html=True)
+            
+            st.markdown("#### 🚀 Goals & Milestones")
+            goals_html = render_tags_with_confidence(profile.get("goals"))
+            st.markdown(f'<div class="memory-card"><div class="content">{goals_html}</div></div>', unsafe_allow_html=True)
+            st.markdown('<div style="height:1rem"></div>', unsafe_allow_html=True)
+            
+            st.markdown("#### 💡 Technical Skills")
+            skills_html = render_tags_with_confidence(profile.get("skills"))
+            st.markdown(f'<div class="memory-card"><div class="content">{skills_html}</div></div>', unsafe_allow_html=True)
+            st.markdown('<div style="height:1rem"></div>', unsafe_allow_html=True)
+            
+            st.markdown("#### 🤝 Collaborators & Teammates")
+            team_html = render_tags_with_confidence(profile.get("team_members"))
+            st.markdown(f'<div class="memory-card"><div class="content">{team_html}</div></div>', unsafe_allow_html=True)
+            
+        with col2:
+            st.markdown("#### 🎨 Areas of Interest")
+            interests_html = render_tags_with_confidence(profile.get("interests"))
+            st.markdown(f'<div class="memory-card"><div class="content">{interests_html}</div></div>', unsafe_allow_html=True)
+            st.markdown('<div style="height:1rem"></div>', unsafe_allow_html=True)
+            
+            st.markdown("#### 🧠 Frequently Discussed Topics")
+            topics_html = render_tags_with_confidence(profile.get("frequent_topics"))
+            st.markdown(f'<div class="memory-card"><div class="content">{topics_html}</div></div>', unsafe_allow_html=True)
+            st.markdown('<div style="height:1rem"></div>', unsafe_allow_html=True)
+            
+            st.markdown("#### 📘 Learning Areas")
+            learning_html = render_tags_with_confidence(profile.get("learning_areas"))
+            st.markdown(f'<div class="memory-card"><div class="content">{learning_html}</div></div>', unsafe_allow_html=True)
+            st.markdown('<div style="height:1rem"></div>', unsafe_allow_html=True)
+            
+            st.markdown("#### 🏆 Hackathons")
+            hack_html = render_tags_with_confidence(profile.get("hackathons"))
+            st.markdown(f'<div class="memory-card"><div class="content">{hack_html}</div></div>', unsafe_allow_html=True)
+    else:
+        st.info("No AI User Profile built yet. Please click the refresh button above to analyze your memory history and build your profile.")

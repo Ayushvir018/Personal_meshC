@@ -21,7 +21,16 @@ def add_memory(content, user_id="ayush", mem_type="personal", priority="medium",
     
     conn.commit()
     conn.close()
+    
+    # Check if profile needs updating (non-blocking)
+    try:
+        from profile_builder import check_and_trigger_profile_update
+        check_and_trigger_profile_update(user_id)
+    except Exception:
+        pass
+        
     return "✅ Memory saved successfully!"
+
 
 
 def get_all_memories(user_id="ayush"):

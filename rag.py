@@ -99,10 +99,45 @@ def ask_personal_mesh(question, user_id="ayush"):
         # Build context
         context = "\n".join([f"- {mem}" for mem in all_memories])
     
+    # Fetch and format user profile details
+    profile_context = ""
+    try:
+        from profile_builder import get_profile
+        profile = get_profile(user_id)
+        if profile:
+            profile_lines = []
+            if profile.get("name"):
+                profile_lines.append(f"- Name: {profile['name']}")
+            for key, label in [
+                ("main_projects", "Main Projects"),
+                ("interests", "Interests"),
+                ("hackathons", "Hackathons"),
+                ("team_members", "Collaborators/Teammates"),
+                ("skills", "Skills"),
+                ("goals", "Goals"),
+                ("frequent_topics", "Frequent Topics"),
+                ("learning_areas", "Learning Areas")
+            ]:
+                items = profile.get(key)
+                if items:
+                    item_strs = []
+                    for it in items:
+                        if isinstance(it, dict) and "name" in it:
+                            item_strs.append(it["name"])
+                        elif isinstance(it, str):
+                            item_strs.append(it)
+                    if item_strs:
+                        profile_lines.append(f"- {label}: {', '.join(item_strs)}")
+            if profile_lines:
+                profile_context = "User Profile Context:\n" + "\n".join(profile_lines)
+    except Exception:
+        pass
+
     # Step 3: Ask Groq
+    profile_part = f"\n{profile_context}\n" if profile_context else ""
     prompt = f"""You are a highly empathetic, emotionally intelligent, and supportive close friend-like AI companion for {user_id}.
 You speak in a very natural, casual Hinglish (a mix of realistic Hindi and English, like young urban Indians text).
-
+{profile_part}
 {user_id}'s personal memories:
 {context if context.strip() else "No personal memories saved yet for this user."}
 
